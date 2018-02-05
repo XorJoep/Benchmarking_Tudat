@@ -1,0 +1,42 @@
+{
+    "initialEpoch": 0,
+    "finalEpoch": 2e8,
+    "globalFrameOrigin": "Sun",
+    "globalFrameOrientation": "ECLIPbJ2000",
+    "bodies" : [
+        "Earth",
+        "Mars",
+        "Mercury",
+        "Venus",
+        "Sun"
+    ],
+    "integratorsettings": {
+        "variable" : {
+            "stepSizeInit" : 10.0,
+            "max_StepN" : 10,
+            "min_step_size" : 1.0E-9,
+            "max_step_size" : 1.0E6,
+            "rel_error_tol_exp_begin" : -14,
+            "rel_error_tol_exp_end" : -10,
+            "rel_error_exp_step" : 2
+        },
+        "fixed" : {
+            "step_size_exp_begin" : 3,
+            "step_size_exp_end" : 5,
+            "step_size_exp_step" : 1
+        } 
+    },
+	"integrators": {
+		"variable" : ["Runge-Kutta78","Bulirsch-Stoer"],
+		"fixed" : 	 ["Runge-Kutta4","Euler"]
+	},
+	"propagators": ["cowell","encke","gaussKeplerian","gaussModifiedEquinoctial"],
+	"gravparam": {
+		"Earth"  : 	3.986e14,
+		"Sun"	 :	1.32712e20,
+		"Mars"	 :	4.28284e13,
+		"Mercury":	2.20318e13,
+		"Moon"	 :	4.9028e12,
+		"Venus"	 :	3.24859e14
+    }
+}

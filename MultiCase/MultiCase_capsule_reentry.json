@@ -1,0 +1,42 @@
+{
+    "initialEpoch": 0,
+    "finalEpoch": 259200,
+    "globalFrameOrigin": "Earth",
+    "globalFrameOrientation": "J2000",
+    "satellite": {
+        "name" : "Delfi",
+        "states": [
+            {
+            "name": "case_0",
+            "semiMajorAxis": 6650000.0,
+            "eccentricity": 0.02,
+            "inclination": 1.55857902203,
+            "argumentOfPeriapsis": 0,
+            "longitudeOfAscendingNode": 0,
+            "trueAnomaly": 0
+            }
+        ]
+        
+    },
+    "integratorsettings": {
+        "variable" : {
+            "stepSizeInit" : 10.0,
+            "max_StepN" : 10,
+            "min_step_size" : 1.0E-9,
+            "max_step_size" : 1.0E6,
+            "rel_error_tol_exp_begin" : -14,
+            "rel_error_tol_exp_end" : -10,
+            "rel_error_exp_step" : 2
+        },
+        "fixed" : {
+            "step_size_exp_begin" : 1,
+            "step_size_exp_end" : 3,
+            "step_size_exp_step" : 1
+        } 
+    },
+	"integrators": {
+		"variable" : ["Runge-Kutta78","Bulirsch-Stoer"],
+		"fixed" : 	 ["Runge-Kutta4","Euler"]
+	},
+    "propagators": ["cowell","encke","gaussKeplerian","gaussModifiedEquinoctial"]
+}
