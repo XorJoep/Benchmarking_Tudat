@@ -1,14 +1,28 @@
-% Input the keplerian elements AnalyticSolution
+% Plot the diffrence vector over time,
+% For a keplerian orbit with diffrent integrators and propagators.
 clear all;
-close all
 clc;
-%format shortE
 
-settings = jsondecode(fileread('BenchmarkSettings.json'));
+%set value to plot in same plot
+%Which value to plot in same graps
+ n = 0; % Stepsizes
+% n = 1; % Propagators
+% n = 2; % Integrators
+
+% define directory locations.
+%input
+jsondirectory = 'BenchmarkSettings.json';
 inputDirectory = 'SimulationOutput\TUDATBenchmarkskeplerapprox\';
+%output
 outputDirectory = 'MatlabOutput\';
 TableOutput = 'TableOutput\';
 
+%make directories if not present.
+mkdir(outputDirectory);
+mkdir(TableOutput);
+
+% read json
+settings = jsondecode(fileread(jsondirectory));
 
 propagatorName = settings.propagators';
 integratorsFixed = settings.integrators.fixed';
@@ -24,18 +38,15 @@ variableSteps = settings.integratorsettings.variable.rel_error_tol_exp_begin:...
                 settings.integratorsettings.variable.rel_error_exp_step:...
                 settings.integratorsettings.variable.rel_error_tol_exp_end;
 variableSteps = strcat('E',cellstr(num2str(variableSteps')));
-            
-loopmaster = {integrators;propagatorName;num2cell(1:3)};
-%set value to plot in same plot
-%Which value to plot in same graps
- n = 0; % Stepsizes
-% n = 1; % Propagators
-% n = 2; % Integrators
 
+
+% Chance order of the for loops with variable n
+loopmaster = {integrators;propagatorName;num2cell(1:3)};
 if n>0 
     loopmaster = circshift(loopmaster,n,1);
 end
-            
+
+close all        
 for simulation = 1:size(settings.satellite.states,1)% loop over all cases
     for l1 = 1:size(loopmaster{1},2)            % loop 1
         for l2 = 1:size(loopmaster{2},2)        % loop 2
@@ -46,13 +57,10 @@ for simulation = 1:size(settings.satellite.states,1)% loop over all cases
                 property2 = loopmaster{2}{l2};
                 property3 = loopmaster{3}{l3};
                 
+                % find integrator and propagator names.
                 integrator = eval(strcat('property',num2str(mod(n+0,3)+1)));
                 propagator = eval(strcat('property',num2str(mod(n+1,3)+1)));
                 varname =         strcat('property',num2str(mod(n+2,3)+1));
-                
-                intnum   = eval(strcat('l',num2str(mod(n+0,3)+1)));
-                propnum  = eval(strcat('l',num2str(mod(n+1,3)+1)));
-                stepnum  = eval(strcat('l',num2str(mod(n+2,3)+1)));
                 
                 % check if current integrator is a fixed step integrator
                 if  any(strcmp(integrator,integratorsFixed))
@@ -61,7 +69,13 @@ for simulation = 1:size(settings.satellite.states,1)% loop over all cases
                     step = variableSteps{eval(varname)};
                 end
                 assignin('base',varname,step)
-            
+                
+                % find the number of the current integrator and propagator
+                intnum   = eval(strcat('l',num2str(mod(n+0,3)+1)));
+                propnum  = eval(strcat('l',num2str(mod(n+1,3)+1)));
+                stepnum  = eval(strcat('l',num2str(mod(n+2,3)+1)));
+                
+                
                 % Import results from TUDAT
                 tit = strcat('Case_',num2str(simulation-1),'_',...
                               propagator,'_',integrator);
@@ -73,19 +87,25 @@ for simulation = 1:size(settings.satellite.states,1)% loop over all cases
                 % Calculate Analytical Solution
                 R = AnalyticSolution(t,settings,simulation);
 
-                % Error function
+                % Calculate diffrence vector
                 O = results(:,2:4)-R(1:size(results(:,2:4),1),:);
                 error = sqrt(sum(O.^2,2));
+                
                 rsslim = find(t>=0.9*t(end),1);
                 rss = sum(error(rsslim:end).^2)/(size(error,1)-rsslim+1);
                 rsstable(stepnum,propnum,intnum) = rss;
                 
                 leg = strcat(property3,', RSS = ',num2str(rss,3));
-                semilogy(t(2:end),error(2:end),'DisplayName',leg) % do not show 1st entry, error(1)=0
+                
+                % dont show 1st entry, error(1)=0 does not work on log plot
+                semilogy(t(2:end),error(2:end),'DisplayName',leg)
                 hold on
                 legend('show')
             end
-            tit = {strcat('Kepler Orbit');strcat('Case_',num2str(simulation-1),'_',property1,'_',property2)};
+            tit = {strcat('Kepler Orbit');...
+                   strcat('Case_',num2str(simulation-1),...
+                   '_',property1,'_',property2)};
+            
             title(tit,'Interpreter', 'none'); %disable latex interpreter
             xlabel('Time [seconds since J2000]');
             ylabel('Error in position [m]');
@@ -101,7 +121,9 @@ end
 % save all figures
 figHandles = get(0,'Children');
 for f = figHandles'
-    outputDir = strcat(pwd,'\',outputDirectory,get(get(get(f,'CurrentAxes'),'title'),'String'));
+    % The title of the figure will be the title of the image.
+    tit = get(get(get(f,'CurrentAxes'),'title'),'String');
+    outputDir = strcat(pwd,'\',outputDirectory,tit);
     saveas(f,sprintf('%s.png',outputDir{2}))
 end
 close all %close invisible figures
@@ -124,7 +146,7 @@ function [ E ] = KeplerEq(manom,ecc)
 end
 function [ R ] = Orbital2State2(a,e,i,w,RA,v)
 % ˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜˜
-% This function computes the state vector (r,v) from the
+% This function computes the position vector r, from the
 % classical orbital elements.
 %
 % a = Semi major axis [m]
@@ -133,7 +155,7 @@ function [ R ] = Orbital2State2(a,e,i,w,RA,v)
 % w = argument of perigee [rad]
 % RA = right ascension of the ascending node [rad]
 % v = true anomaly [rad]
-% r - position vector in the geocentric equatorial frame [m]
+% r - Position vector magnitude [m]
 % ------------------------------------------------------------
 r=(a*(1-e^2))./(1+e*cos(v));
 
@@ -150,22 +172,35 @@ Z = r.*(n1*cos(v)+n2*sin(v));
 R=[X,Y,Z];
 end
 function [ R ] = AnalyticSolution(t,json,sim)
+% This function calculates the analytical solution of an orbit.
+%
+% t = time vector [s]
+% json = the json input file containing information about the simulation
+% sim = the case number.
+%
+%
+% This function requires two other functions:
+%
+% KeplerEq - to reverse the kepler equation
+% Orbital2State2 - to calculate position from keplerian elements.
     
-    
+
     set = json.satellite.states(sim);
-    % constants
-    mu = 3.986004418e14;                 % Earth’s gravitational parameter [m^3/s^2]
+    
+    % Earth’s gravitational parameter [m^3/s^2]
+    mu = json.gravparam.Earth;
 
     %  Inital state
     a     =  set.semiMajorAxis;           % [m] Semimajor axis
     e     =  set.eccentricity;            % [-] Eccentricity
-    i     =  set.inclination;             % [rad] True anomaly at epoch
-    omega =  set.argumentOfPeriapsis;     % [rad] Right ascension of the ascending node
-    RAAN  =  set.longitudeOfAscendingNode;% [rad] Inclination
-    theta =  set.trueAnomaly;             % [rad] Argument of perigee
+    i     =  set.inclination;             % [rad] Inclination
+    RAAN  =  set.longitudeOfAscendingNode;% [rad] longitude of ascending node
+    omega =  set.argumentOfPeriapsis;     % [rad] Argument of perigee
+    theta =  set.trueAnomaly;             % [rad] True anomaly at epoch
 
-    T = 2*pi*sqrt(a^3/mu);          % Period
+    T = 2*pi*sqrt(a^3/mu);                % Period [s]
     
+    % Vectorized position calclation
     E0 = 2*atan(tan(theta/2)*sqrt((1-e)/(1+e)));
     M0 = E0  - e*sin(E0);
     t0 = (M0/2*pi)*T;
@@ -175,9 +210,19 @@ function [ R ] = AnalyticSolution(t,json,sim)
     theta = 2*atan(tan(E/2)*sqrt((1+e)/(1-e)));
     R = Orbital2State2(a,e,i,omega,RAAN,theta);
 end
-function [   ] = tablegen(ourputdir,array,json,sim,intname)
-% numeric values you want to tabulate:
-% this field has to be an array or a MATLAB table
+function [   ] = tablegen(outputdir,array,json,sim,intname)
+% This function generates a latex table
+%
+% For this function the latexTable add-on from Eli Duenisch has to be
+% installed.
+% Version 1.21 used by creation of this script.
+%
+% outputdir = [string], gives the path to the output directory
+% array = [2 dimensional matrix], contains values to put in table
+% json = [struct], json input file containing information about the simulation
+% sim = [number], the case number
+% intname = [string], name of the current integrator
+
 input.data = array;
 
 propagatorName = json.propagators';
@@ -192,7 +237,10 @@ variableSteps = json.integratorsettings.variable.rel_error_tol_exp_begin:...
                 json.integratorsettings.variable.rel_error_tol_exp_end;
 variableSteps = strcat('1e',cellstr(num2str(variableSteps')));
 
+% Collumn labels
 input.tableColLabels = propagatorName;
+
+% Row labels
 if any(strcmp(intname,integratorsFixed))
     input.tableRowLabels = fixedSteps;
 else
@@ -205,7 +253,8 @@ input.dataFormatMode = 'column'; % use 'column' or 'row'.
 input.dataFormat = {'%.3e',4}; % three digits precision
 
 % LaTex table caption:
-input.tableCaption = ['RSS value for Case ',num2str(sim-1),' and a ',intname,' integrator'];
+input.tableCaption = ['RSS value for Case ',num2str(sim-1),...
+                      ' and a ',intname,' integrator'];
 
 % LaTex table label:
 input.tableLabel = ['tab:keplerapprox_rss_C',num2str(sim-1),'_',intname];
@@ -214,7 +263,8 @@ input.tableLabel = ['tab:keplerapprox_rss_C',num2str(sim-1),'_',intname];
 latex = latexTable(input);
 
 % save LaTex code as file
-filename = strcat(ourputdir,'Keplerapprox_C',num2str(sim-1),'_int_',intname,'_RSS_Table.tex');
+filename = strcat(outputdir,'Keplerapprox_C',num2str(sim-1),...
+                  '_int_',intname,'_RSS_Table.tex');
 fid=fopen(filename,'w');
 [nrows,~] = size(latex);
 for row = 1:nrows

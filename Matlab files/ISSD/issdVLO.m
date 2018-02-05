@@ -1,12 +1,32 @@
+% Calculate the energy over time for diffrent integrators and propagators.
 clear all
-% Import data
-% store data in big 3D array
-files = dir('ISS_Output\*.dat');
-json = jsondecode(fileread('ISSD\MultiCase_ISSD.json'));
+
+
+
+%set value to plot in same plot
+%Which value to plot in same graps
+% n = 0; % Stepsizes
+% n = 1; % Propagators
+ n = 2; % Integrators
+
+% define directory locations.
+%input
+jsondirectory = 'MultiCase_ISSD.json';
+inputDirectory = 'ISS_Output\';
+%output
 outputDirectory = 'MatlabOutput\';
 TableOutput = 'TableOutput\';
 
+files = dir([inputDirectory, '*.dat']);
 
+
+
+%make directories if not present.
+mkdir(outputDirectory);
+mkdir(TableOutput);
+
+% read json
+json = jsondecode(fileread(jsondirectory));
 integrators = [json.integrators.fixed; json.integrators.variable];
 propagators = json.propagators;
 
@@ -20,18 +40,13 @@ variableSteps = json.integratorsettings.variable.rel_error_tol_exp_begin:...
                 json.integratorsettings.variable.rel_error_tol_exp_end;
 variableSteps = strcat('E',cellstr(num2str(variableSteps')));
 
+% Chance order of the for loops with variable n
 loopmaster = {integrators';propagators';num2cell(1:3)};
-%set value to plot in same plot
-%Which value to plot in same graps
-% n = 0; % Stepsizes
- n = 1; % Propagators
-% n = 2; % Integrators
-
 if n>0 
     loopmaster = circshift(loopmaster,n,1);
 end
 
-
+close all
 for l1 = 1:size(loopmaster{1},2) %loop 1
     for l2 = 1:size(loopmaster{2},2)% loop 2
         figure('visible', 'off') % make invisible figures
@@ -40,13 +55,11 @@ for l1 = 1:size(loopmaster{1},2) %loop 1
             property2 = loopmaster{2}{l2};
             property3 = loopmaster{3}{l3};
             
-            intnum   = eval(strcat('l',num2str(mod(n+0,3)+1)));
-            propnum  = eval(strcat('l',num2str(mod(n+1,3)+1)));
-            stepnum  = eval(strcat('l',num2str(mod(n+2,3)+1)));
-            
+            % find integrator and propagator names.
             integrator = eval(strcat('property',num2str(mod(n+0,3)+1)));
             propagator = eval(strcat('property',num2str(mod(n+1,3)+1)));
             varname =         strcat('property',num2str(mod(n+2,3)+1));
+            
             % check if current integrator is a fixed step integrator
             if  any(strcmp(integrator,json.integrators.fixed))
                 stepsize = fixedSteps{eval(varname)};
@@ -54,6 +67,11 @@ for l1 = 1:size(loopmaster{1},2) %loop 1
                 stepsize = variableSteps{eval(varname)};
             end
             assignin('base',varname,stepsize)
+            
+            % find the number of the current integrator and propagator
+            intnum   = eval(strcat('l',num2str(mod(n+0,3)+1)));
+            propnum  = eval(strcat('l',num2str(mod(n+1,3)+1)));
+            stepnum  = eval(strcat('l',num2str(mod(n+2,3)+1)));
             
             % run actual calculation  
             ii=1;
@@ -78,24 +96,36 @@ for l1 = 1:size(loopmaster{1},2) %loop 1
             end
             
             e = zeros(size(data,1),size(data,3));
+            etest = zeros(size(data,1),size(data,3));% to be removed
             for i=1:size(data,3)
                 k = 1/2*mu(i)*sum(data(:,5:7,i).^2,2);
-                pot=-mu(i)*json.gravparam.('Sun')./sqrt(sum(data(:,2:4,i).^2,2));
+                ktest = 1/2*mu(i)*(sum(data(1,5:7,i).^2,2)+finderror(sum(data(1,5:7,i).^2,2))); % to be removed
+                pot=-mu(i)*json.gravparam.('Sun')./...
+                    sqrt(sum(data(:,2:4,i).^2,2));
+                pottest=-mu(i)*json.gravparam.('Sun')./...
+                    (sqrt(sum(data(1,2:4,i).^2,2))+finderror(sqrt(sum(data(1,2:4,i).^2,2)))); % to be removed
                 for j=1:size(data,3)
                     if i==j
                         % no gravitational influnce from itsself
                     else
-                        p = -1/2*mu(i)*mu(j)./sqrt(sum((data(:,2:4,i)-data(:,2:4,j)).^2,2));
+                        p = -1/2*mu(i)*mu(j)./...
+                            sqrt(sum((data(:,2:4,i)-data(:,2:4,j)).^2,2));
+                        ptest = -1/2*mu(i)*mu(j)./...
+                            (sqrt(sum((data(1,2:4,i)-data(1,2:4,j)).^2,2))+finderror(sqrt(sum((data(1,2:4,i)-data(1,2:4,j)).^2,2)))); % to be removed
                         pot = pot+p;
+                        pottest = pottest+ptest;
                     end
                 end
+                etest = ktest+pottest; % to be removed
+                
                 e(:,i) = k+pot;
             end
 
             eTotal = sum(e,2);
             t = data(:,1,1);
             rsslim = find(t>=0.9*t(end),1);
-            rss = sum(eTotal(rsslim:end).^2)/(size(eTotal,1)-rsslim+1);
+            rss = sum((eTotal(rsslim:end)/eTotal(1)-1).^2)/...
+                  (size(eTotal,1)-rsslim+1);
             rsstable(stepnum,propnum,intnum) = rss;
             
             leg = strcat(property3,' RSS = ',num2str(rss,3));
@@ -103,7 +133,8 @@ for l1 = 1:size(loopmaster{1},2) %loop 1
             hold on
             legend('show')
         end
-        tit = {strcat('Total energy over time');strcat(property1,'_',property2)};
+        tit = {strcat('Total energy over time');...
+               strcat(property1,'_',property2)};
         title(tit,'Interpreter', 'none')
         xlabel('time [seconds since J2000]')
         ylabel('E(t)/E(0)')
@@ -117,7 +148,8 @@ end
 % save all figures
 figHandles = get(0,'Children');
 for f = figHandles'
-    outputDir = strcat(pwd,'\',outputDirectory,get(get(get(f,'CurrentAxes'),'title'),'String'));
+    tit = get(get(get(f,'CurrentAxes'),'title'),'String');
+    outputDir = strcat(pwd,'\',outputDirectory,tit);
     saveas(f,sprintf('%s.png',outputDir{2}))
 end
 close all %close invisible figures
@@ -168,4 +200,9 @@ for row = 1:nrows
     fprintf(fid,'%s\n',latex{row,:});
 end
 fclose(fid);
+end
+
+function [ error ] = finderror(x)
+p = abs(x);
+error = sign(x)*10^(floor(log10(p))-15);
 end

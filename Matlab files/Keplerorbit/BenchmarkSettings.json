@@ -53,5 +53,12 @@
 		"variable" : ["Runge-Kutta78","Bulirsch-Stoer"],
 		"fixed" : 	 ["Runge-Kutta4","Euler"]
 	},
-	"propagators": ["cowell","encke","gauss-kepl","gauss-mod"]
+	"propagators": ["cowell","encke","gauss-kepl","gauss-mod"],
+	"gravparam": {
+		"Earth"  : 	3.98600441800000e14,
+		"Sun"	 :	1.327124400419393e20,
+		"Mars"	 :	4.2828375815756102e13,
+		"Mercury":	2.203178000000002e13,
+		"Venus"	 :	3.24858592e14
+    }
 }
