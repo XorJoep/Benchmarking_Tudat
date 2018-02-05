@@ -8,12 +8,13 @@ JsonInput = jsondecode(fileread('C:\Users\alks_\Documents\Matlab\Spaceflight_Ass
 
 Graphs ='C:\Users\alks_\Documents\Matlab\Spaceflight_Assignment\Graphs\';
 File = 'C:\Users\alks_\Documents\Matlab\Spaceflight_Assignment\Keppler_orbit_output\';
-Dropbox = 'C:\Users\alks_\Dropbox\Benchmarking Tudat\Energy Graphs UnpKepler\';
+Dropbox = 'C:\Users\alks_\Dropbox\Benchmarking Tudat\Graphs\Energy Graphs UnpKepler\';
 NOC = 3;            % Number of cases
 NOS = 3;            % Number of stepsizes
 Data = dir(strcat(File,'*.dat'));
 L = length (Data);
 mu = 3.986004418e14;
+Table = zeros(1,L);
 count = 0;
 %% Looping
 while count <= NOC-1
@@ -53,14 +54,20 @@ h = 0.5*(vx.^2+vy.^2+vz.^2) - mu*(rabs.^-1);
 hdot =(vx.*ax+vy.*ay+vz.*az)+...
       (mu./(rabs.^3)).*(rx.*vx+ry.*vy+rz.*vz);
 
+% Adding data to table
+% Taking last 10% of datapoints and taking average as 'error'
+Points = ceil(0.1*length(Time));
+Average = mean(abs(abs(h(end-Points:end))-abs(hc(end-Points:end))));
+Table(i) = Average;
+
 % Plotting
 name = Data(i).name(end-8:end-4);
 semilogy (Time,abs(abs(h)-abs(hc)), 'DisplayName', name)
 p = legend ('show');
 set(p,'interpreter', 'none');
 if i == (count*(L/NOC))+NOS*l       %Saving at last (depending on NOS) plot, closing and opening new fig
-xlabel ('Time');
-ylabel ('Specific energy');
+xlabel ('Time (seconds since J2000)');
+ylabel ('Total specific energy system (J/kg)');
 set(gca,'yscale','log')
 title(Data(i).name(1:end-6),'Interpreter', 'none' );
 saveas(gcf,strcat(Graphs,Data(i).name(1:end-4),'.png'))
@@ -73,3 +80,5 @@ end
 end
 count=count+1;
 end
+%% splitting vector into table
+Table = vec2mat(Table,NOS)';
