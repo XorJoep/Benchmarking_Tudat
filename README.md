@@ -12,11 +12,13 @@ You should have Tudat installed on your machine to use the C++ files. Matlab is 
 
 ## Authors
 
-* **Joep Dumont** - *C++ Tudat data generating & Matlab GUI*
-* **Emiel Hartsema** - *Processing data & energy balance*
-* **Alex Batchelor** - *Energy Balance*
+* **A. Batchelor** - *Processing data: Energy Balance*
+* **J. Dumont** - *C++ Tudat data generating & Matlab GUI*
+* **E. Hartsema** - *Processing data: Exact & energy balance*
+* **G. Kempenaar** - *Benchmarks*
+* **F. Michielsen** - *Stability*
 
 ## Acknowledgments
 
-* Dominic Dirkx - For leading, assisting and helping.
+* D. Dirkx - For leading, assisting and helping.
 
