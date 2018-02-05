@@ -5,7 +5,6 @@
     "globalFrameOrientation": "J2000",
     "satellite": {
         "name" : "Delfi",
-        "mass" : 400.0,
         "states": [
             {
             "semiMajorAxis": 7000000.0,
